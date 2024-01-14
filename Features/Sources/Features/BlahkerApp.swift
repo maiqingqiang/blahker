@@ -10,17 +10,16 @@ import SwiftUI
 
 @main
 struct BlahkerApp: App {
+    @UIApplicationDelegateAdaptor var appDelegate: AppDelegate
+
     var body: some Scene {
         WindowGroup {
-            AppView(store: .init(
-                initialState: AppFeature.State(),
-                reducer: {
-                    AppFeature()._printChanges()
-                }
-            ))
+            AppView(store: appDelegate.store)
         }
     }
 }
+
+
 
 struct AppView: View {
     let store: StoreOf<AppFeature>

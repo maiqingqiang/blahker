@@ -11,14 +11,19 @@ import Foundation
 @Reducer
 struct HomeFeature {
     struct State: Equatable {
+        var appLaunchCheck = true
         var isEnabledContentBlocker = false
         @PresentationState var alert: AlertState<Action.Alert>?
+        var path = StackState<Path.State>()
     }
     
     enum Action: Equatable {
         case alert(PresentationAction<Alert>)
+        case path(StackAction<Path.State, Path.Action>)
+        case appDidFinishLaunching
         case scenePhaseBecomeActive
         case userEnableContentBlocker(Bool)
+        case manuallyCheckUserEnabledContentBlocker(Bool)
         case tapDontTapMeButton
         case tapRefreshButton
         case tapAboutButton
@@ -41,42 +46,30 @@ struct HomeFeature {
     }
     
     func core(into state: inout State, action: Action) -> Effect<Action> {
-        var checkUserEnabledContentBlocker: Effect<Action> {
+        func checkUserEnabledContentBlocker(manually: Bool) -> Effect<Action> {
             .run { send in
                 let extensionID = "com.elaborapp.Blahker.ContentBlocker"
                 let isEnabled = await contentBlockerService.checkUserEnabledContentBlocker(extensionID)
                 
-                await send(.userEnableContentBlocker(isEnabled))
-            }
+                await send(manually ? .manuallyCheckUserEnabledContentBlocker(isEnabled) : .userEnableContentBlocker(isEnabled))
+            }.cancellable(id: CancelID.checkUserEnabledContentBlocker, cancelInFlight: true)
         }
         
-        let pleaseEnableContentBlockerAlert = AlertState<HomeFeature.Action.Alert>(
-            title: TextState("请开启扩展"),
-            message: TextState("请打开「设置」>「Safari」>「扩展」，并启用Blahker"),
-            buttons: [
-                ButtonState(
-                    action: .okToReloadContentBlocker,
-                    label: {
-                        TextState("确定")
-                    }
-                ),
-                ButtonState(
-                    role: .cancel,
-                    label: {
-                        TextState("取消")
-                    }
-                )
-            ]
-        )
+        enum CancelID {
+            case checkUserEnabledContentBlocker
+        }
         
         switch action {
         case .alert(.presented(.largeDonation)):
             return .none
+        case .path:
+            return .none
+        case .appDidFinishLaunching:
+            return checkUserEnabledContentBlocker(manually: false)
         case let .alert(.presented(alert)):
             switch alert {
             case .okToReloadContentBlocker:
-                state.alert = pleaseEnableContentBlockerAlert
-                return .none
+                return checkUserEnabledContentBlocker(manually: true)
             case .smallDonation:
                 return .none
             case .mediumDonation:
@@ -93,14 +86,24 @@ struct HomeFeature {
         case .alert(.dismiss):
             return .none
         case .scenePhaseBecomeActive:
-            return checkUserEnabledContentBlocker
+            return checkUserEnabledContentBlocker(manually: false)
         case let .userEnableContentBlocker(isEnabled):
-            state.isEnabledContentBlocker = isEnabled
-            
-            if isEnabled {
-            } else {
-                state.alert = pleaseEnableContentBlockerAlert
+            switch (isEnabled, state.appLaunchCheck, state.isEnabledContentBlocker) {
+            case (false, _, _):
+                state.alert = .pleaseEnableContentBlocker
+            case (true, false, false):
+                state.alert = .updateSuccess
+            default:
+                break
             }
+            
+            state.isEnabledContentBlocker = isEnabled
+            state.appLaunchCheck = false
+            
+            return .none
+        case let .manuallyCheckUserEnabledContentBlocker(isEnabled):
+            state.alert = isEnabled ? .updateSuccess : .pleaseEnableContentBlocker
+            state.isEnabledContentBlocker = isEnabled
             
             return .none
         case .tapDontTapMeButton:
@@ -142,8 +145,10 @@ struct HomeFeature {
             )
             return .none
         case .tapRefreshButton:
-            return checkUserEnabledContentBlocker
+            return checkUserEnabledContentBlocker(manually: true)
         case .tapAboutButton:
+            state.path.removeAll()
+            state.path.append(.about(.init()))
             return .none
         }
     }

@@ -15,7 +15,7 @@ struct HomeView: View {
 
     var body: some View {
         WithViewStore(store, observe: { $0 }) { _ in
-            NavigationStack {
+            NavigationStackStore(self.store.scope(state: \.path, action: \.path)) {
                 VStack {
                     setupDescription
                     Spacer()
@@ -41,8 +41,26 @@ struct HomeView: View {
                         break
                     }
                 }
-            }
-            .preferredColorScheme(.dark)
+            } destination: { state in
+                switch state {
+                case .about:
+                    CaseLet(
+                        /HomeFeature.Path.State.about,
+                        action: HomeFeature.Path.Action.about
+                    ){
+                        AboutView(store: $0)
+                    }
+                case .blockerList:
+                    CaseLet(
+                        /HomeFeature.Path.State.blockerList,
+                        action: HomeFeature.Path.Action.blockerList
+                    ){
+                        BlockerListView(store: $0)
+                    }
+                default:
+                    EmptyView()
+                }
+            }.preferredColorScheme(.dark)
         }
     }
     
