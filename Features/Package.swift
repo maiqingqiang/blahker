@@ -35,7 +35,7 @@ let package = Package(
         ),
         .target(
             name: "ContentBlockerService",
-            dependencies: [.dependencies]
+            dependencies: [.dependencies, .dependenciesMacros]
         ),
     ]
 )
@@ -47,4 +47,5 @@ extension Target.Dependency {
 extension Target.Dependency {
     static let tca = Self.product(name: "ComposableArchitecture", package: "swift-composable-architecture")
     static let dependencies = Self.product(name: "Dependencies", package: "swift-dependencies")
+    static let dependenciesMacros = Self.product(name: "DependenciesMacros", package: "swift-dependencies")
 }

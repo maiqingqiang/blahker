@@ -6,18 +6,25 @@
 //
 
 import Dependencies
+import DependenciesMacros
 import Foundation
 import SafariServices
 
+@DependencyClient
 public struct ContentBlockerService {
-    public var checkUserEnabledContentBlocker: (String) async -> Bool
+    public var checkUserEnabledContentBlocker: (String) async -> Bool = { _ in
+        unimplemented("checkUserEnabledContentBlocker", placeholder: false)
+    }
+
     public var reloadContentBlocker: (String) async throws -> Void
 }
 
 extension ContentBlockerService: DependencyKey {
     public static var liveValue = ContentBlockerService(
         checkUserEnabledContentBlocker: { bundleID in
-            await withCheckedContinuation { continuation in
+            try? await Task.sleep(for: .seconds(3))
+
+            return await withCheckedContinuation { continuation in
                 SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: bundleID) { state, error in
 
                     if let error {
@@ -42,13 +49,6 @@ extension ContentBlockerService: DependencyKey {
                 })
             }
         }
-    )
-}
-
-extension ContentBlockerService: TestDependencyKey {
-    public static var testValue = ContentBlockerService(
-        checkUserEnabledContentBlocker: unimplemented("checkUserEnabledContentBlocker"),
-        reloadContentBlocker: unimplemented("checkUserEnabledContentBlocker")
     )
 }
 

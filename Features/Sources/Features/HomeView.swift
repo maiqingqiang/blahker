@@ -47,20 +47,22 @@ struct HomeView: View {
                     CaseLet(
                         /HomeFeature.Path.State.about,
                         action: HomeFeature.Path.Action.about
-                    ){
+                    ) {
                         AboutView(store: $0)
                     }
                 case .blockerList:
                     CaseLet(
                         /HomeFeature.Path.State.blockerList,
                         action: HomeFeature.Path.Action.blockerList
-                    ){
+                    ) {
                         BlockerListView(store: $0)
                     }
                 default:
                     EmptyView()
                 }
-            }.preferredColorScheme(.dark)
+            }
+            .preferredColorScheme(.dark)
+            .tint(.white)
         }
     }
     
@@ -88,7 +90,6 @@ struct HomeView: View {
                 Text("拜托别按我")
             }
         )
-        .foregroundColor(.white)
         .font(.title2)
         .alert(store: store.scope(state: \.$alert, action: \.alert))
     }
@@ -96,15 +97,18 @@ struct HomeView: View {
     @MainActor
     @ViewBuilder
     private var refreshButton: some View {
-        Button(
-            action: {
-                store.send(.tapRefreshButton)
-            },
-            label: {
-                Image(systemName: "arrow.clockwise")
-            }
-        )
-        .buttonStyle(.plain)
+        WithViewStore(store, observe: \.isCheckingBlockerList) { viewStore in
+            let isCheckingBlockerList = viewStore.state
+            Button(
+                action: {
+                    store.send(.tapRefreshButton)
+                },
+                label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+            )
+            .disabled(isCheckingBlockerList)
+        }
     }
     
     @MainActor
@@ -118,7 +122,6 @@ struct HomeView: View {
                 Text("关于")
             }
         )
-        .buttonStyle(.plain)
     }
 }
 

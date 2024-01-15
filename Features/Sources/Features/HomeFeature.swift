@@ -13,6 +13,8 @@ struct HomeFeature {
     struct State: Equatable {
         var appLaunchCheck = true
         var isEnabledContentBlocker = false
+        var isCheckingBlockerList = false
+        
         @PresentationState var alert: AlertState<Action.Alert>?
         var path = StackState<Path.State>()
     }
@@ -42,12 +44,17 @@ struct HomeFeature {
     
     var body: some ReducerOf<Self> {
         Reduce(core)
+            .forEach(\.path, action: \.path) {
+                Path()
+            }
             .ifLet(\.$alert, action: \.alert)
     }
     
     func core(into state: inout State, action: Action) -> Effect<Action> {
         func checkUserEnabledContentBlocker(manually: Bool) -> Effect<Action> {
-            .run { send in
+            state.isCheckingBlockerList = true
+            
+            return .run { send in
                 let extensionID = "com.elaborapp.Blahker.ContentBlocker"
                 let isEnabled = await contentBlockerService.checkUserEnabledContentBlocker(extensionID)
                 
@@ -61,6 +68,9 @@ struct HomeFeature {
         
         switch action {
         case .alert(.presented(.largeDonation)):
+            return .none
+        case .path(.element(id: _, action: .about(.tapBlockerListCell))):
+            state.path.append(.blockerList(.init()))
             return .none
         case .path:
             return .none
@@ -78,8 +88,7 @@ struct HomeFeature {
                 return .none
             case .rate5Star:
                 return .run { _ in
-                    let url = URL(string: "https://apps.apple.com/tw/app/blahker-%E5%B7%B4%E6%8B%89%E5%89%8B/id1182699267")!
-                    await openURL(url)
+                    await openURL(.appStore)
                 }
             }
             
@@ -97,6 +106,7 @@ struct HomeFeature {
                 break
             }
             
+            state.isCheckingBlockerList = false
             state.isEnabledContentBlocker = isEnabled
             state.appLaunchCheck = false
             
@@ -104,50 +114,15 @@ struct HomeFeature {
         case let .manuallyCheckUserEnabledContentBlocker(isEnabled):
             state.alert = isEnabled ? .updateSuccess : .pleaseEnableContentBlocker
             state.isEnabledContentBlocker = isEnabled
+            state.isCheckingBlockerList = false
             
             return .none
         case .tapDontTapMeButton:
-            state.alert = AlertState(
-                title: TextState("支持开发者"),
-                message: TextState("Blahker的维护包含不断更新挡广告清单。如果有你的支持一定会更好～"),
-                buttons: [
-                    ButtonState(
-                        action: .smallDonation,
-                        label: {
-                            TextState("打赏小小费")
-                        }
-                    ),
-                    ButtonState(
-                        action: .mediumDonation,
-                        label: {
-                            TextState("打赏小费")
-                        }
-                    ),
-                    ButtonState(
-                        action: .largeDonation,
-                        label: {
-                            TextState("破费")
-                        }
-                    ),
-                    ButtonState(
-                        action: .rate5Star,
-                        label: {
-                            TextState("我不出钱，给个五星好评总行了吧")
-                        }
-                    ),
-                    ButtonState(
-                        role: .cancel,
-                        label: {
-                            TextState("算了吧，不值得")
-                        }
-                    ),
-                ]
-            )
+            state.alert = .donation
             return .none
         case .tapRefreshButton:
             return checkUserEnabledContentBlocker(manually: true)
         case .tapAboutButton:
-            state.path.removeAll()
             state.path.append(.about(.init()))
             return .none
         }
