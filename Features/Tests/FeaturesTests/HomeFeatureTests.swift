@@ -18,6 +18,9 @@ final class HomeFeatureTests: XCTestCase {
             }
         ) {
             $0.contentBlockerService.checkUserEnabledContentBlocker = { _ in false }
+            $0.contentBlockerService.reloadContentBlocker = { _ in
+                    XCTFail("User haven't enable content blocker, should not run here")
+            }
         }
 
         await store.send(.scenePhaseBecomeActive) {
@@ -30,6 +33,7 @@ final class HomeFeatureTests: XCTestCase {
     }
 
     func testAppLaunch_userAlreadyEnableContentBlocker() async throws {
+        var reloadContentBlocker = false
         let store = TestStore(
             initialState: HomeFeature.State(appLaunchCheck: true, isEnabledContentBlocker: false),
             reducer: {
@@ -45,6 +49,10 @@ final class HomeFeatureTests: XCTestCase {
 
                 return true
             }
+
+            $0.contentBlockerService.reloadContentBlocker = { _ in
+                reloadContentBlocker = true
+            }
         }
 
         await store.send(.appDidFinishLaunching) {
@@ -56,6 +64,8 @@ final class HomeFeatureTests: XCTestCase {
             $0.isEnabledContentBlocker = true
             $0.appLaunchCheck = false
         }
+        
+        XCTAssertTrue(reloadContentBlocker)
     }
 
     func testAppBecomeActive_userAlreadyEnableContentBlocker() async throws {
@@ -66,6 +76,7 @@ final class HomeFeatureTests: XCTestCase {
             }
         ) {
             $0.contentBlockerService.checkUserEnabledContentBlocker = { _ in true }
+            $0.contentBlockerService.reloadContentBlocker = { _ in }
         }
 
         await store.send(.scenePhaseBecomeActive) {
@@ -85,6 +96,7 @@ final class HomeFeatureTests: XCTestCase {
             }
         ) {
             $0.contentBlockerService.checkUserEnabledContentBlocker = { _ in false }
+            $0.contentBlockerService.reloadContentBlocker = { _ in }
         }
 
         await store.send(.scenePhaseBecomeActive) {
@@ -172,6 +184,7 @@ final class HomeFeatureTests: XCTestCase {
             }
         ) {
             $0.contentBlockerService.checkUserEnabledContentBlocker = { _ in false }
+            $0.contentBlockerService.reloadContentBlocker = { _ in }
         }
 
         await store.send(.tapRefreshButton) {
@@ -213,6 +226,7 @@ final class HomeFeatureTests: XCTestCase {
             }
         ) {
             $0.contentBlockerService.checkUserEnabledContentBlocker = { _ in true }
+            $0.contentBlockerService.reloadContentBlocker = { _ in }
         }
 
         await store.send(.tapRefreshButton) {

@@ -7,10 +7,13 @@
 
 import ComposableArchitecture
 import Foundation
+import Models
 
 @Reducer
 struct BlockerListFeature {
-    struct State: Equatable {}
+    struct State: Equatable {
+        var ruleItems: [RuleItem] = []
+    }
 
     enum Action: Equatable {}
 
@@ -19,4 +22,11 @@ struct BlockerListFeature {
     }
 
     func core(into state: inout State, action: Action) -> Effect<Action> {}
+}
+
+struct RuleItem: Equatable, Identifiable {
+    let id = UUID()
+
+    var title: String
+    var description: String
 }

@@ -51,12 +51,17 @@ struct HomeFeature {
     }
     
     func core(into state: inout State, action: Action) -> Effect<Action> {
-        func checkUserEnabledContentBlocker(manually: Bool) -> Effect<Action> {
+        func checkUserEnabledContentBlockerAndReload(manually: Bool) -> Effect<Action> {
             state.isCheckingBlockerList = true
             
             return .run { send in
-                let extensionID = "com.elaborapp.Blahker.ContentBlocker"
-                let isEnabled = await contentBlockerService.checkUserEnabledContentBlocker(extensionID)
+                let bundleID = "com.elaborapp.Blahker.ContentBlocker"
+                let isEnabled = await contentBlockerService.checkUserEnabledContentBlocker(bundleID)
+                
+                if isEnabled {
+                    try await contentBlockerService.reloadContentBlocker(bundleID)
+                }
+                
                 
                 await send(manually ? .manuallyCheckUserEnabledContentBlocker(isEnabled) : .userEnableContentBlocker(isEnabled))
             }.cancellable(id: CancelID.checkUserEnabledContentBlocker, cancelInFlight: true)
@@ -75,11 +80,11 @@ struct HomeFeature {
         case .path:
             return .none
         case .appDidFinishLaunching:
-            return checkUserEnabledContentBlocker(manually: false)
+            return checkUserEnabledContentBlockerAndReload(manually: false)
         case let .alert(.presented(alert)):
             switch alert {
             case .okToReloadContentBlocker:
-                return checkUserEnabledContentBlocker(manually: true)
+                return checkUserEnabledContentBlockerAndReload(manually: true)
             case .smallDonation:
                 return .none
             case .mediumDonation:
@@ -95,7 +100,7 @@ struct HomeFeature {
         case .alert(.dismiss):
             return .none
         case .scenePhaseBecomeActive:
-            return checkUserEnabledContentBlocker(manually: false)
+            return checkUserEnabledContentBlockerAndReload(manually: false)
         case let .userEnableContentBlocker(isEnabled):
             switch (isEnabled, state.appLaunchCheck, state.isEnabledContentBlocker) {
             case (false, _, _):
@@ -121,7 +126,7 @@ struct HomeFeature {
             state.alert = .donation
             return .none
         case .tapRefreshButton:
-            return checkUserEnabledContentBlocker(manually: true)
+            return checkUserEnabledContentBlockerAndReload(manually: true)
         case .tapAboutButton:
             state.path.append(.about(.init()))
             return .none

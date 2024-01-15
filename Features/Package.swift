@@ -16,6 +16,10 @@ let package = Package(
             name: "ContentBlockerService",
             targets: ["ContentBlockerService"]
         ),
+        .library(
+            name: "Models",
+            targets: ["Models"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.6.0"),
@@ -26,7 +30,7 @@ let package = Package(
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "Features",
-            dependencies: [.contentBlockerService, .tca]
+            dependencies: [.models, .contentBlockerService, .tca]
 
         ),
         .testTarget(
@@ -37,11 +41,16 @@ let package = Package(
             name: "ContentBlockerService",
             dependencies: [.dependencies, .dependenciesMacros]
         ),
+        .target(
+            name: "Models",
+            dependencies: []
+        ),
     ]
 )
 
 extension Target.Dependency {
     static let contentBlockerService: Self = "ContentBlockerService"
+    static let models: Self = "Models"
 }
 
 extension Target.Dependency {
